@@ -14,8 +14,7 @@
     background: #ffffff;
     color: #1a1d26;
     font-family: 'Inter', -apple-system, sans-serif;
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
   }
@@ -135,12 +134,11 @@
      Rows: [venue-names, today-header, today-timeline, tomorrow-header, tomorrow-timeline]
   */
   .grid {
-    flex: 1;
     display: grid;
     grid-template-columns: 60px repeat(5, 1fr);
-    grid-template-rows: auto auto 1fr auto 1fr;
-    overflow: hidden;
+    /* rows are set inline by JS: header + 7 * (label + timeline) */
     background: #fff;
+    padding-bottom: 20px;
   }
 
   .venue-header {
@@ -153,10 +151,18 @@
     border-left: 2px solid #d5d8e0;
     letter-spacing: -0.5px;
     line-height: 1;
+    background: #ffffff;
+    position: sticky;
+    top: 0;
+    z-index: 5;
   }
   .corner {
-    border-bottom: 2px solid #d5d8e0;
+    background: #ffffff;
+    position: sticky;
+    top: 0;
+    z-index: 5;
   }
+
 
   .day-label {
     grid-column: 1 / -1;
@@ -202,7 +208,7 @@
   .timeline-cell {
     position: relative;
     border-left: 2px solid #d5d8e0;
-    min-height: 0;
+    min-height: 320px;
   }
   .timeline-cell.today-col {
     background: rgba(20, 184, 166, 0.04);
@@ -368,7 +374,7 @@
           <path d="M50 100 C 44 96, 44 84, 48 72 C 50 62, 50 52, 51 44 C 53 54, 55 62, 55 74 C 56 84, 55 96, 50 100 Z" fill="#fef3c7"/>
         </g>
       </svg></span>tspots</h1>
-    <div class="subtitle">Live 48-hour schedule across CCK food-truck locations — refreshes every 15 minutes</div>
+    <div class="subtitle">Live 7-day schedule across CCK food-truck locations — refreshes every 15 minutes</div>
   </div>
   <div class="header-right">
     <div class="now-label" id="nowLabel"></div>
@@ -434,6 +440,12 @@ function isSameDay(d1, d2) {
   return d1.getFullYear() === d2.getFullYear() &&
          d1.getMonth() === d2.getMonth() &&
          d1.getDate() === d2.getDate();
+}
+
+function dayIndexFromToday(date) {
+  const today = startOfToday();
+  const d = new Date(date); d.setHours(0,0,0,0);
+  return Math.round((d - today) / (24*60*60*1000));
 }
 
 function formatHour(h) {
@@ -508,20 +520,14 @@ async function fetchEvents() {
     const data = await res.json();
     if (data.fetchedAt) lastFetchedAt = new Date(data.fetchedAt);
 
-    const today = startOfToday();
-    const tomorrow = startOfTomorrow();
-
     currentEvents = (data.events || []).flatMap(ev => {
       const venueMatch = VENUES.find(v => v.full === ev.space);
       if (!venueMatch) return [];
 
       const start = new Date(ev.startMs);
       const end = new Date(ev.endMs);
-      // Only today or tomorrow
-      let dayIndex;
-      if (isSameDay(start, today)) dayIndex = 0;
-      else if (isSameDay(start, tomorrow)) dayIndex = 1;
-      else return [];
+      const dayIndex = dayIndexFromToday(start);
+      if (dayIndex < 0 || dayIndex > 6) return [];
 
       const startHour = start.getHours() + start.getMinutes()/60;
       let endHour = end.getHours() + end.getMinutes()/60;
@@ -566,7 +572,11 @@ function buildGrid() {
 
   const now = new Date();
   const today = startOfToday();
-  const tomorrow = startOfTomorrow();
+
+  // Build the grid-template-rows: 1 header row + 7 * (label auto + timeline min 320px)
+  const rows = ['auto'];
+  for (let i = 0; i < 7; i++) rows.push('auto', 'minmax(320px, 1fr)');
+  grid.style.gridTemplateRows = rows.join(' ');
 
   // Header row: corner + venue names
   const corner = document.createElement('div');
@@ -579,29 +589,23 @@ function buildGrid() {
     grid.appendChild(h);
   }
 
-  // Today's day label (spans full width)
-  const todayLabel = document.createElement('div');
-  todayLabel.className = 'day-label today';
-  todayLabel.innerHTML = 'TODAY <span class="day-date">' +
-    FULL_DAYS[today.getDay()] + ', ' + MONTH_NAMES[today.getMonth()] + ' ' + today.getDate() +
-    '</span>';
-  grid.appendChild(todayLabel);
+  // Loop 7 days
+  for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+    const date = new Date(today);
+    date.setDate(date.getDate() + dayIdx);
+    const isToday = dayIdx === 0;
 
-  // Today's timeline row: time axis + 5 venue cells
-  appendTimelineRow(grid, /*dayIndex*/ 0, /*isToday*/ true);
+    const label = document.createElement('div');
+    label.className = 'day-label' + (isToday ? ' today' : '');
+    const labelText = dayIdx === 0 ? 'TODAY' : (dayIdx === 1 ? 'TOMORROW' : FULL_DAYS[date.getDay()].toUpperCase());
+    label.innerHTML = labelText + ' <span class="day-date">' +
+      FULL_DAYS[date.getDay()] + ', ' + MONTH_NAMES[date.getMonth()] + ' ' + date.getDate() +
+      '</span>';
+    grid.appendChild(label);
 
-  // Tomorrow's day label
-  const tomLabel = document.createElement('div');
-  tomLabel.className = 'day-label';
-  tomLabel.innerHTML = 'TOMORROW <span class="day-date">' +
-    FULL_DAYS[tomorrow.getDay()] + ', ' + MONTH_NAMES[tomorrow.getMonth()] + ' ' + tomorrow.getDate() +
-    '</span>';
-  grid.appendChild(tomLabel);
+    appendTimelineRow(grid, dayIdx, isToday);
+  }
 
-  // Tomorrow's timeline row
-  appendTimelineRow(grid, 1, false);
-
-  // Now label in header
   const nowLbl = document.getElementById('nowLabel');
   nowLbl.textContent = 'Now: ' + now.toLocaleTimeString('en-US', {
     hour: 'numeric', minute: '2-digit', hour12: true
@@ -707,11 +711,16 @@ function buildMobileView() {
   container.innerHTML = '';
 
   const today = startOfToday();
-  const tomorrow = startOfTomorrow();
-  const dayLabels = [
-    { idx: 0, label: 'Today', date: today },
-    { idx: 1, label: 'Tomorrow', date: tomorrow },
-  ];
+  const dayLabels = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    dayLabels.push({
+      idx: i,
+      label: i === 0 ? 'Today' : (i === 1 ? 'Tomorrow' : FULL_DAYS[d.getDay()]),
+      date: d,
+    });
+  }
 
   for (const venue of VENUES) {
     const section = document.createElement('div');
