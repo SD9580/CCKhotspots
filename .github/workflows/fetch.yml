@@ -47,3 +47,13 @@ jobs:
           if [ -z "$NON_TIMESTAMP" ]; then
             echo "Only timestamp changed — skipping commit"
             git reset HEAD events.json
+            exit 0
+          fi
+          git commit -m "Update bookings: $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do
+            if git pull --rebase origin main && git push; then
+              echo "Pushed on attempt $i"; exit 0
+            fi
+            sleep 3
+          done
+          exit 1
