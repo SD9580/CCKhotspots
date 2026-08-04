@@ -1,0 +1,49 @@
+name: Fetch food truck bookings
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+  push:
+    paths:
+      - "fetch_tfc.py"
+      - ".github/workflows/fetch.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run fetcher
+        run: python fetch_tfc.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "cck-hotspots-bot"
+          git config user.email "actions@github.com"
+          git add events.json
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          DIFF=$(git diff --cached --no-color events.json | grep -E '^[+-]' | grep -vE '^[+-]{3}' || true)
+          NON_TIMESTAMP=$(echo "$DIFF" | grep -v 'fetchedAt' || true)
+          if [ -z "$NON_TIMESTAMP" ]; then
+            echo "Only timestamp changed — skipping commit"
+            git reset HEAD events.json
