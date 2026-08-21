@@ -1,6 +1,13 @@
 {
   "events": [
     {
+      "title": "THE HDC",
+      "space": "Clarence Driving Range [Food Trucks Only]",
+      "startMs": 1787329800000,
+      "endMs": 1787353200000,
+      "color": "#4DD0E1"
+    },
+    {
       "title": "Main and Mango",
       "space": "Clarence Car Wash [Food Trucks Only]",
       "startMs": 1787346000000,
@@ -50,7 +57,7 @@
       "color": "#4DD0E1"
     }
   ],
-  "fetchedAt": "2026-08-21T04:22:30.756723+00:00",
+  "fetchedAt": "2026-08-21T15:47:57.177284+00:00",
   "source": "thefoodcorridor.com",
   "listingId": "46758-clarence-creative-kitchen",
   "venuesSeen": [
