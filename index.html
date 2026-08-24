@@ -156,6 +156,14 @@
     top: 0;
     z-index: 5;
   }
+  .venue-addr {
+    font-size: 15px;
+    font-weight: 600;
+    color: #6b7280;
+    letter-spacing: 0;
+    line-height: 1.2;
+    margin-top: 5px;
+  }
   .corner {
     background: #ffffff;
     position: sticky;
@@ -329,6 +337,10 @@
       font-size: 28px; font-weight: 800; color: #1a1d26;
       padding: 8px 0; border-bottom: 2px solid #d5d8e0;
     }
+    .m-venue-addr {
+      display: block; font-size: 14px; font-weight: 600;
+      color: #6b7280; margin-top: 2px;
+    }
     .m-day { margin-top: 10px; }
     .m-day-label {
       font-size: 13px; font-weight: 700; color: #6b7280;
@@ -407,7 +419,7 @@ const VENUES = [
   { full: 'Clarence Driving Range [Food Trucks Only]', short: 'Driving Range' },
   { full: 'Willow Square [Food Trucks Only]',           short: 'Willow Square' },
   { full: '9735 Main Street [Food Trucks Only]',        short: '9735 Main' },
-  { full: 'Park Slope [Food Trucks Only]',              short: 'Park Slope' },
+  { full: 'Park Slope [Food Trucks Only]',              short: 'Park Slope', addr: '10440 Main Street' },
   { full: 'Clarence Car Wash [Food Trucks Only]',       short: 'Clarence Car Wash' },
 ];
 
@@ -585,7 +597,8 @@ function buildGrid() {
   for (const v of VENUES) {
     const h = document.createElement('div');
     h.className = 'venue-header';
-    h.textContent = v.short;
+    h.innerHTML = '<div>' + escapeHtml(v.short) + '</div>' +
+      (v.addr ? '<div class="venue-addr">' + escapeHtml(v.addr) + '</div>' : '');
     grid.appendChild(h);
   }
 
@@ -725,7 +738,9 @@ function buildMobileView() {
   for (const venue of VENUES) {
     const section = document.createElement('div');
     section.className = 'm-venue';
-    section.innerHTML = '<div class="m-venue-name">' + escapeHtml(venue.short) + '</div>';
+    section.innerHTML = '<div class="m-venue-name">' + escapeHtml(venue.short) +
+      (venue.addr ? '<span class="m-venue-addr">' + escapeHtml(venue.addr) + '</span>' : '') +
+      '</div>';
 
     for (const day of dayLabels) {
       const dayDiv = document.createElement('div');
