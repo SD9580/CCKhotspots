@@ -423,23 +423,30 @@ const VENUES = [
   { full: 'Clarence Car Wash [Food Trucks Only]',       short: 'Clarence Car Wash', addr: '8825 Main Street' },
 ];
 
-// Same solid vendor palette as the main food-trucks page.
-const VENDOR_PALETTE = [
-  { bg: '#22c55e', border: '#15803d' },
-  { bg: '#3b82f6', border: '#1d4ed8' },
-  { bg: '#f97316', border: '#c2410c' },
-  { bg: '#ec4899', border: '#be185d' },
-  { bg: '#8b5cf6', border: '#6d28d9' },
-  { bg: '#eab308', border: '#a16207' },
-  { bg: '#14b8a6', border: '#0f766e' },
-  { bg: '#ef4444', border: '#b91c1c' },
-  { bg: '#a855f7', border: '#7e22ce' },
-  { bg: '#84cc16', border: '#4d7c0f' },
+// Vendor colors, same approach as the CCK kitchen schedule board:
+// named trucks get a fixed color that never changes, and anything new
+// falls through to the rotation below in first-seen order. No hashing,
+// so two trucks can't collide on the same color.
+const VENDOR_COLORS = {
+  'CIELITO LINDO':   { bg: '#3b82f6', border: '#1d4ed8' },  // Blue
+  'THE HDC':         { bg: '#ef4444', border: '#b91c1c' },  // Red
+  'MAIN AND MANGO':  { bg: '#22c55e', border: '#15803d' },  // Green
+  'STREET CRAVINGS': { bg: '#f97316', border: '#c2410c' },  // Orange
+};
+
+const FALLBACK_PALETTE = [
+  { bg: '#8b5cf6', border: '#6d28d9' },  // Violet
+  { bg: '#ec4899', border: '#be185d' },  // Pink
+  { bg: '#14b8a6', border: '#0f766e' },  // Teal
+  { bg: '#eab308', border: '#a16207' },  // Gold
+  { bg: '#a855f7', border: '#7e22ce' },  // Purple
+  { bg: '#84cc16', border: '#4d7c0f' },  // Lime
 ];
 
 let currentEvents = [];
 let lastFetchedAt = null;
 const vendorColorMap = new Map();
+let fallbackIndex = 0;
 
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const FULL_DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -476,18 +483,26 @@ function escapeHtml(s) {
   })[c]);
 }
 
-function vendorKey(title) { return title.trim().toLowerCase().replace(/\s+/g, ' '); }
-function hashString(s) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = ((h<<5) - h + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
+// Match a booking title to a named vendor by prefix, so "Cielito Lindo Taqueria"
+// and "Cielito Lindo" land on the same color.
+function vendorKey(title) {
+  const t = title.trim().toUpperCase().replace(/\s+/g, ' ');
+  for (const prefix of Object.keys(VENDOR_COLORS)) {
+    if (t.startsWith(prefix)) return prefix;
+  }
+  return t;
 }
 function colorForVendor(title) {
   const key = vendorKey(title);
   if (vendorColorMap.has(key)) return vendorColorMap.get(key);
-  const idx = hashString(key) % VENDOR_PALETTE.length;
-  vendorColorMap.set(key, VENDOR_PALETTE[idx]);
-  return VENDOR_PALETTE[idx];
+
+  let c = VENDOR_COLORS[key];
+  if (!c) {
+    c = FALLBACK_PALETTE[fallbackIndex % FALLBACK_PALETTE.length];
+    fallbackIndex++;
+  }
+  vendorColorMap.set(key, c);
+  return c;
 }
 
 // Simple lane assignment for the rare case of overlapping bookings at one venue.
