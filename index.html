@@ -353,22 +353,31 @@
     .header .cck-logo { height: 50px; }
     .header .logo { height: 44px; }
 
-    .m-venue { margin-top: 14px; }
-    .m-venue-name {
-      font-size: 28px; font-weight: 800; color: #1a1d26;
+    /* Mobile is day-major: one section per day, every venue listed inside. */
+    .m-day { margin-top: 18px; }
+    .m-day-label {
+      font-size: 24px; font-weight: 800; color: #1a1d26;
       padding: 8px 0; border-bottom: 2px solid #d5d8e0;
     }
-    .m-venue-addr {
-      display: block; font-size: 14px; font-weight: 600;
-      color: #6b7280; margin-top: 2px;
-    }
-    .m-day { margin-top: 10px; }
-    .m-day-label {
+    .m-day.m-today .m-day-label { color: #0d9488; border-bottom-color: #0d9488; }
+
+    .m-venue { margin-top: 12px; }
+    .m-venue-name {
       font-size: 13px; font-weight: 700; color: #6b7280;
       text-transform: uppercase; letter-spacing: 0.5px;
     }
-    .m-day.m-today .m-day-label { color: #0d9488; }
-    .m-no-events { padding: 6px 0; font-size: 13px; color: #d1d5db; font-weight: 600; }
+    .m-venue-addr {
+      font-size: 12px; font-weight: 600; color: #9ca3af;
+      text-transform: none; letter-spacing: 0; margin-left: 6px;
+    }
+    /* Venues with nothing booked collapse to one muted line, so a quiet
+       day stays short while still listing every location. */
+    .m-venue.m-empty {
+      margin-top: 6px; display: flex;
+      justify-content: space-between; align-items: baseline;
+    }
+    .m-venue.m-empty .m-venue-name { color: #c3c7cf; font-weight: 600; }
+    .m-venue.m-empty .m-dash { font-size: 13px; color: #d1d5db; font-weight: 600; }
     .m-event {
       display: flex; align-items: center;
       padding: 10px 12px; margin-top: 6px;
@@ -791,40 +800,38 @@ function buildMobileView() {
   container.innerHTML = '';
 
   const today = startOfToday();
-  const dayLabels = [];
+
+  // Day-major: each day is a section, and every venue appears inside it.
   for (let i = 0; i < 7; i++) {
-    const d = new Date(today);
-    d.setDate(d.getDate() + i);
-    dayLabels.push({
-      idx: i,
-      label: i === 0 ? 'Today' : (i === 1 ? 'Tomorrow' : FULL_DAYS[d.getDay()]),
-      date: d,
-    });
-  }
+    const date = new Date(today);
+    date.setDate(date.getDate() + i);
+    const label = i === 0 ? 'Today' : (i === 1 ? 'Tomorrow' : FULL_DAYS[date.getDay()]);
 
-  for (const venue of VENUES) {
-    const section = document.createElement('div');
-    section.className = 'm-venue';
-    section.innerHTML = '<div class="m-venue-name">' + escapeHtml(venue.short) +
-      (venue.addr ? '<span class="m-venue-addr">' + escapeHtml(venue.addr) + '</span>' : '') +
-      '</div>';
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'm-day' + (i === 0 ? ' m-today' : '');
+    dayDiv.innerHTML = '<div class="m-day-label">' + label + ' — ' +
+      MONTH_NAMES[date.getMonth()] + ' ' + date.getDate() + '</div>';
 
-    for (const day of dayLabels) {
-      const dayDiv = document.createElement('div');
-      dayDiv.className = 'm-day' + (day.idx === 0 ? ' m-today' : '');
-      dayDiv.innerHTML = '<div class="m-day-label">' + day.label + ' — ' +
-        MONTH_NAMES[day.date.getMonth()] + ' ' + day.date.getDate() + '</div>';
-
+    for (const venue of VENUES) {
       const dayEvents = currentEvents
-        .filter(e => e.dayIndex === day.idx && e.venue.full === venue.full)
+        .filter(e => e.dayIndex === i && e.venue.full === venue.full)
         .sort((a, b) => a.startHour - b.startHour);
 
+      const venueDiv = document.createElement('div');
+
       if (dayEvents.length === 0) {
-        const no = document.createElement('div');
-        no.className = 'm-no-events';
-        no.textContent = 'No bookings';
-        dayDiv.appendChild(no);
+        venueDiv.className = 'm-venue m-empty';
+        venueDiv.innerHTML =
+          '<div class="m-venue-name">' + escapeHtml(venue.short) + '</div>' +
+          '<div class="m-dash">—</div>';
       } else {
+        venueDiv.className = 'm-venue';
+        // Address shows only where something is booked — that's the day you
+        // actually need to know where to go.
+        venueDiv.innerHTML = '<div class="m-venue-name">' + escapeHtml(venue.short) +
+          (venue.addr ? '<span class="m-venue-addr">' + escapeHtml(venue.addr) + '</span>' : '') +
+          '</div>';
+
         dayEvents.forEach(ev => {
           const c = colorForVendor(ev.title);
           const card = document.createElement('div');
@@ -837,12 +844,14 @@ function buildMobileView() {
             '<div class="m-client">' + escapeHtml(ev.title) + '</div>' +
             '<div class="m-time">' + startLabel + endLabel + '</div>' +
             '</div>';
-          dayDiv.appendChild(card);
+          venueDiv.appendChild(card);
         });
       }
-      section.appendChild(dayDiv);
+
+      dayDiv.appendChild(venueDiv);
     }
-    container.appendChild(section);
+
+    container.appendChild(dayDiv);
   }
 }
 
