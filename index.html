@@ -259,6 +259,10 @@
     opacity: 0.95;
     margin-top: 2px;
   }
+  /* Never let flex squeeze the labels. Squeezing clips the glyphs instead
+     of overflowing, which hides the problem from fitEventBlocks(). */
+  .event .client-name, .event .time-range { flex-shrink: 0; }
+
   .event.compact { padding: 3px 8px; }
   .event.compact .client-name { font-size: 17px; -webkit-line-clamp: 1; }
   .event.compact .time-range { font-size: 13px; margin-top: 1px; }
