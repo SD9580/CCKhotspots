@@ -267,6 +267,23 @@
   .event.narrow .time-range { font-size: 12px; }
   .event.narrow.compact .client-name { font-size: 14px; }
 
+  /* Height-aware sizing. Blocks are sized as a percentage of the day's
+     height, so a short booking on a short screen can end up shorter than
+     its own text. fitEventBlocks() measures each block after layout and
+     steps the type down until it fits. The doubled class names keep these
+     ahead of the compact/narrow rules above. */
+  .event.h-sm.h-sm { padding: 3px 8px; }
+  .event.h-sm.h-sm .client-name { font-size: 16px; line-height: 1.1; -webkit-line-clamp: 1; }
+  .event.h-sm.h-sm .time-range { font-size: 12px; margin-top: 0; }
+
+  .event.h-xs.h-xs { padding: 2px 7px; }
+  .event.h-xs.h-xs .client-name { font-size: 13px; line-height: 1.05; -webkit-line-clamp: 1; }
+  .event.h-xs.h-xs .time-range { font-size: 11px; margin-top: 0; }
+
+  .event.h-min.h-min { padding: 1px 6px; }
+  .event.h-min.h-min .client-name { font-size: 12px; line-height: 1; -webkit-line-clamp: 1; }
+  .event.h-min.h-min .time-range { display: none; }
+
   /* Now indicator */
   .now-line {
     position: absolute;
@@ -732,6 +749,37 @@ function appendTimelineRow(grid, dayIndex, isToday) {
 
     grid.appendChild(cell);
   }
+
+  fitEventBlocks(grid);
+}
+
+// A block's height is a percentage of the day row, so on a short screen a
+// two-hour booking can be shorter than its own label. Measure each block
+// against the space it actually got and step the type down until it fits.
+function fitEventBlocks(scope) {
+  const TIERS = ['', 'h-sm', 'h-xs', 'h-min'];
+
+  scope.querySelectorAll('.event').forEach(el => {
+    for (const tier of TIERS) {
+      el.classList.remove('h-sm', 'h-xs', 'h-min');
+      if (tier) el.classList.add(tier);
+
+      const cs = getComputedStyle(el);
+      const room = el.clientHeight
+        - parseFloat(cs.paddingTop || 0)
+        - parseFloat(cs.paddingBottom || 0);
+
+      let needed = 0;
+      for (const child of el.children) {
+        const ccs = getComputedStyle(child);
+        needed += child.offsetHeight
+          + parseFloat(ccs.marginTop || 0)
+          + parseFloat(ccs.marginBottom || 0);
+      }
+
+      if (needed <= room + 0.5) break;
+    }
+  });
 }
 
 function buildMobileView() {
@@ -810,6 +858,7 @@ async function init() {
   updateClock();
   setInterval(updateClock, 1000);
   setInterval(() => { buildGrid(); buildMobileView(); }, 60 * 1000);
+  window.addEventListener('resize', () => fitEventBlocks(document.getElementById('grid')));
   setInterval(async () => {
     await fetchEvents();
     buildGrid();
