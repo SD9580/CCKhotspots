@@ -1,7 +1,13 @@
 {
   "events": [],
-  "fetchedAt": "2026-11-26T11:15:57.526017+00:00",
+  "fetchedAt": "2026-11-26T20:21:49.200676+00:00",
   "source": "thefoodcorridor.com",
   "listingId": "46758-clarence-creative-kitchen",
-  "venuesSeen": []
+  "venuesSeen": [
+    "9735 Main Street [Food Trucks Only]",
+    "Clarence Car Wash [Food Trucks Only]",
+    "Clarence Driving Range [Food Trucks Only]",
+    "Park Slope [Food Trucks Only]",
+    "Willow Square [Food Trucks Only]"
+  ]
 }
